@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自堕落な人向けタスク管理</title>
+  <style>
+    :root {
+      --primary: #6c5ce7;
+      --primary-light: #a29bfe;
+      --danger: #e17055;
+      --danger-light: #fab1a0;
+      --success: #00b894;
+      --success-light: #55efc4;
+      --warning: #fdcb6e;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #2d3436;
+      --text-light: #636e72;
+      --border: #dfe6e9;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ヘッダー */
+    .header {
+      background: linear-gradient(135deg, var(--primary), #8b7cf7);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(108,92,231,0.3);
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .header .status {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    /* 設定パネル */
+    .setup-panel {
+      background: var(--card);
+      border: 2px dashed var(--primary-light);
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px;
+      text-align: center;
+    }
+
+    .setup-panel input {
+      width: 100%;
+      max-width: 500px;
+      padding: 10px 14px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      margin: 12px 0;
+    }
+
+    .setup-panel input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    /* ナビゲーション */
+    .nav {
+      display: flex;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+
+    .nav button {
+      flex: 1;
+      padding: 12px 16px;
+      border: none;
+      background: none;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-light);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .nav button.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .nav button:hover {
+      background: #f0efff;
+    }
+
+    .nav .badge {
+      display: inline-block;
+      background: var(--danger);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-left: 4px;
+    }
+
+    /* メインコンテンツ */
+    .content {
+      padding: 16px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    /* カード */
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--primary);
+    }
+
+    .card.overdue {
+      border-left-color: var(--danger);
+      background: #fff5f5;
+    }
+
+    .card.completed {
+      border-left-color: var(--success);
+      opacity: 0.7;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .card-meta {
+      font-size: 13px;
+      color: var(--text-light);
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    /* タグ */
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 12px;
+      margin-right: 4px;
+    }
+
+    .tag.deadline {
+      background: #ffeaa7;
+      color: #846b10;
+    }
+
+    .tag.overdue {
+      background: var(--danger);
+      color: white;
+    }
+
+    .tag.penalty {
+      background: #fab1a0;
+      color: #6b3020;
+    }
+
+    .tag.done {
+      background: var(--success-light);
+      color: #0a6b52;
+    }
+
+    /* ボタン */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #5a4bd1;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: #009b7d;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #c0392b;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--border);
+      color: var(--text-light);
+    }
+
+    .btn-outline:hover:not(:disabled) {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    .btn-block {
+      width: 100%;
+      padding: 12px;
+      font-size: 15px;
+    }
+
+    /* フォーム */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-light);
+      margin-bottom: 4px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .form-inline {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .form-inline .form-group {
+      flex: 1;
+    }
+
+    /* モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    .modal h3 {
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    /* ダッシュボード統計 */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card .number {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .stat-card .label {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 4px;
+    }
+
+    .stat-card.danger .number { color: var(--danger); }
+    .stat-card.warning .number { color: #e67e22; }
+    .stat-card.success .number { color: var(--success); }
+    .stat-card.primary .number { color: var(--primary); }
+
+    /* 空状態 */
+    .empty {
+      text-align: center;
+      padding: 40px 16px;
+      color: var(--text-light);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    /* ローディング */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-light);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* セクションタイトル */
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ペナルティ発動アラート */
+    .alert {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .alert.alert-danger {
+      background: #f8d7da;
+      border-color: var(--danger);
+    }
+
+    /* レスポンシブ */
+    @media (max-width: 480px) {
+      .header h1 { font-size: 17px; }
+      .form-inline { flex-direction: column; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <div>
+      <h1>自堕落な人向けタスク管理</h1>
+      <div class="status" id="connectionStatus">未接続</div>
+    </div>
+    <button class="btn btn-sm btn-outline" style="color:white;border-color:rgba(255,255,255,0.4)" onclick="showSetup()">設定</button>
+  </div>
+
+  <!-- 設定パネル -->
+  <div id="setupPanel" class="setup-panel" style="display:none">
+    <h3>API設定</h3>
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:8px">
+      Google Apps ScriptのデプロイURLを入力してください
+    </p>
+    <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/xxxxx/exec">
+    <br>
+    <button class="btn btn-primary" onclick="saveApiUrl()">保存して接続</button>
+    <button class="btn btn-outline" onclick="hideSetup()" style="margin-left:8px">キャンセル</button>
+  </div>
+
+  <!-- ナビゲーション -->
+  <div class="nav" id="mainNav" style="display:none">
+    <button class="active" onclick="switchTab('dashboard')">
+      ダッシュボード
+    </button>
+    <button onclick="switchTab('tasks')">
+      タスク
+    </button>
+    <button onclick="switchTab('penalties')">
+      ペナルティ一覧
+    </button>
+    <button onclick="switchTab('history')">
+      ペナルティ履歴 <span class="badge" id="historyBadge" style="display:none">0</span>
+    </button>
+  </div>
+
+  <!-- コンテンツ -->
+  <div class="content" id="mainContent" style="display:none">
+
+    <!-- ダッシュボード -->
+    <div class="section active" id="sec-dashboard">
+      <div class="stats">
+        <div class="stat-card primary">
+          <div class="number" id="statTotal">0</div>
+          <div class="label">未完了タスク</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="number" id="statOverdue">0</div>
+          <div class="label">期限切れ</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="number" id="statPending">0</div>
+          <div class="label">未実行のペナルティ</div>
+        </div>
+        <div class="stat-card success">
+          <div class="number" id="statCompleted">0</div>
+          <div class="label">完了済み</div>
+        </div>
+      </div>
+
+      <div id="overdueAlerts"></div>
+
+      <div class="section-title">期限が近いタスク</div>
+      <div id="upcomingTasks"></div>
+    </div>
+
+    <!-- タスク -->
+    <div class="section" id="sec-tasks">
+      <div class="section-title">
+        タスク一覧
+        <button class="btn btn-primary btn-sm" onclick="showAddTaskModal()">+ 追加</button>
+      </div>
+      <div id="taskList"></div>
+    </div>
+
+    <!-- ペナルティ一覧 -->
+    <div class="section" id="sec-penalties">
+      <div class="section-title">
+        ペナルティ一覧
+        <button class="btn btn-danger btn-sm" onclick="showAddPenaltyModal()">+ 追加</button>
+      </div>
+      <div id="penaltyList"></div>
+    </div>
+
+    <!-- ペナルティ履歴 -->
+    <div class="section" id="sec-history">
+      <div class="section-title">ペナルティ履歴</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- タスク追加モーダル -->
+  <div class="modal-overlay" id="addTaskModal">
+    <div class="modal">
+      <h3>タスクを追加</h3>
+      <div class="form-group">
+        <label>タスク名 *</label>
+        <input type="text" id="taskName" placeholder="例: 宿題を終わらせる">
+      </div>
+      <div class="form-group">
+        <label>締め切り *</label>
+        <input type="date" id="taskDeadline">
+      </div>
+      <div class="form-group">
+        <label>ペナルティ（未達成時に発動）</label>
+        <select id="taskPenalty">
+          <option value="">-- ペナルティなし --</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal('addTaskModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="addTask()">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ペナルティ追加モーダル -->
+  <div class="modal-overlay" id="addPenaltyModal">
+    <div class="modal">
+      <h3>ペナルティを追加</h3>
+      <div class="form-group">
+        <label>ペナルティ名 *</label>
+        <input type="text" id="penaltyName" placeholder="例: ゲーム禁止1日">
+      </div>
+      <div class="form-group">
+        <label>詳細</label>
+        <textarea id="penaltyDetail" placeholder="ペナルティの詳しい内容"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal('addPenaltyModal')">キャンセル</button>
+        <button class="btn btn-danger" onclick="addPenalty()">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ペナルティ編集モーダル -->
+  <div class="modal-overlay" id="editPenaltyModal">
+    <div class="modal">
+      <h3>ペナルティを編集</h3>
+      <input type="hidden" id="editPenaltyId">
+      <div class="form-group">
+        <label>ペナルティ名 *</label>
+        <input type="text" id="editPenaltyName">
+      </div>
+      <div class="form-group">
+        <label>詳細</label>
+        <textarea id="editPenaltyDetail"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal('editPenaltyModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="updatePenalty()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ローディング -->
+  <div class="loading" id="loadingOverlay" style="display:none">
+    <div class="spinner"></div>
+    <p style="margin-top:12px">読み込み中...</p>
+  </div>
+
+  <script>
+    // ============================================================
+    // 状態管理
+    // ============================================================
+    let API_URL = localStorage.getItem('taskManager_apiUrl') || '';
+    let appData = {
+      tasks: [],
+      penalties: [],
+      history: []
+    };
+
+    // ============================================================
+    // 初期化
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', () => {
+      if (API_URL) {
+        connectAndLoad();
+      } else {
+        showSetup();
+      }
+
+      // 締め切りのデフォルトを明日に
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      document.getElementById('taskDeadline').value = formatDate(tomorrow);
+    });
+
+    // ============================================================
+    // API通信
+    // ============================================================
+    async function apiCall(action, params = {}) {
+      const url = new URL(API_URL);
+      url.searchParams.set('action', action);
+      for (const [key, value] of Object.entries(params)) {
+        url.searchParams.set(key, value);
+      }
+
+      const response = await fetch(url.toString());
+      if (!response.ok) throw new Error('通信エラー: ' + response.status);
+      return await response.json();
+    }
+
+    async function connectAndLoad() {
+      showLoading(true);
+      try {
+        const data = await apiCall('getAll');
+        if (data.error) throw new Error(data.error);
+
+        appData.tasks = data.tasks || [];
+        appData.penalties = data.penalties || [];
+        appData.history = data.history || [];
+
+        document.getElementById('connectionStatus').textContent = '接続済み';
+        document.getElementById('mainNav').style.display = 'flex';
+        document.getElementById('mainContent').style.display = 'block';
+        hideSetup();
+
+        renderAll();
+      } catch (e) {
+        document.getElementById('connectionStatus').textContent = '接続エラー';
+        showSetup();
+        alert('接続に失敗しました: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // ============================================================
+    // 設定
+    // ============================================================
+    function showSetup() {
+      document.getElementById('setupPanel').style.display = 'block';
+      document.getElementById('apiUrlInput').value = API_URL;
+    }
+
+    function hideSetup() {
+      document.getElementById('setupPanel').style.display = 'none';
+    }
+
+    function saveApiUrl() {
+      const url = document.getElementById('apiUrlInput').value.trim();
+      if (!url) {
+        alert('URLを入力してください');
+        return;
+      }
+      API_URL = url;
+      localStorage.setItem('taskManager_apiUrl', url);
+      connectAndLoad();
+    }
+
+    // ============================================================
+    // タブ切り替え
+    // ============================================================
+    function switchTab(tab) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+
+      document.getElementById('sec-' + tab).classList.add('active');
+      event.target.closest('button').classList.add('active');
+    }
+
+    // ============================================================
+    // レンダリング
+    // ============================================================
+    function renderAll() {
+      renderDashboard();
+      renderTasks();
+      renderPenalties();
+      renderHistory();
+      updatePenaltySelects();
+    }
+
+    function renderDashboard() {
+      const now = new Date();
+      const today = formatDate(now);
+
+      const incomplete = appData.tasks.filter(t => !t.completed);
+      const overdue = incomplete.filter(t => t.deadline && t.deadline < today);
+      const pendingHistory = appData.history.filter(h => !h.done);
+      const completed = appData.tasks.filter(t => t.completed);
+
+      document.getElementById('statTotal').textContent = incomplete.length;
+      document.getElementById('statOverdue').textContent = overdue.length;
+      document.getElementById('statPending').textContent = pendingHistory.length;
+      document.getElementById('statCompleted').textContent = completed.length;
+
+      // 期限切れアラート
+      const alertsHtml = overdue.map(t => {
+        const penalty = appData.penalties.find(p => p.penaltyId === t.penaltyId);
+        const penaltyText = penalty ? `<span class="tag penalty">${escHtml(penalty.name)}</span>` : '';
+        return `
+          <div class="alert alert-danger">
+            <strong>${escHtml(t.name)}</strong> の期限が切れています（${t.deadline}）
+            ${penaltyText}
+            <div style="margin-top:8px">
+              <button class="btn btn-success btn-sm" onclick="completeTask('${t.taskId}')">完了にする</button>
+              ${penalty ? `<button class="btn btn-danger btn-sm" onclick="triggerPenalty('${t.taskId}')">ペナルティを発動</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+      document.getElementById('overdueAlerts').innerHTML = alertsHtml;
+
+      // 期限が近いタスク（未完了、期限あり、期限順）
+      const upcoming = incomplete
+        .filter(t => t.deadline && t.deadline >= today)
+        .sort((a, b) => a.deadline.localeCompare(b.deadline))
+        .slice(0, 5);
+
+      if (upcoming.length === 0 && overdue.length === 0) {
+        document.getElementById('upcomingTasks').innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">&#127881;</div>
+            <p>すべてのタスクが完了しています！</p>
+          </div>
+        `;
+      } else {
+        document.getElementById('upcomingTasks').innerHTML = upcoming.map(t => renderTaskCard(t)).join('');
+      }
+
+      // 履歴バッジ
+      const badge = document.getElementById('historyBadge');
+      if (pendingHistory.length > 0) {
+        badge.textContent = pendingHistory.length;
+        badge.style.display = 'inline';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    function renderTasks() {
+      const now = new Date();
+      const today = formatDate(now);
+
+      const incomplete = appData.tasks.filter(t => !t.completed);
+      const completed = appData.tasks.filter(t => t.completed);
+
+      if (appData.tasks.length === 0) {
+        document.getElementById('taskList').innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">&#128203;</div>
+            <p>タスクがありません。追加しましょう！</p>
+          </div>
+        `;
+        return;
+      }
+
+      // 期限切れ→期限近い順→期限なし
+      incomplete.sort((a, b) => {
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return a.deadline.localeCompare(b.deadline);
+      });
+
+      let html = incomplete.map(t => renderTaskCard(t)).join('');
+
+      if (completed.length > 0) {
+        html += `<div class="section-title" style="margin-top:20px">完了済み（${completed.length}件）</div>`;
+        html += completed.map(t => renderTaskCard(t)).join('');
+      }
+
+      document.getElementById('taskList').innerHTML = html;
+    }
+
+    function renderTaskCard(task) {
+      const today = formatDate(new Date());
+      const isOverdue = !task.completed && task.deadline && task.deadline < today;
+      const penalty = appData.penalties.find(p => p.penaltyId === task.penaltyId);
+
+      const daysLeft = task.deadline ? Math.ceil((new Date(task.deadline) - new Date(today)) / 86400000) : null;
+      let deadlineTag = '';
+      if (task.deadline) {
+        if (isOverdue) {
+          deadlineTag = `<span class="tag overdue">期限切れ（${Math.abs(daysLeft)}日超過）</span>`;
+        } else if (daysLeft === 0) {
+          deadlineTag = `<span class="tag overdue">今日まで！</span>`;
+        } else if (daysLeft <= 3) {
+          deadlineTag = `<span class="tag deadline">あと${daysLeft}日</span>`;
+        } else {
+          deadlineTag = `<span class="tag deadline">${task.deadline}</span>`;
+        }
+      }
+
+      const penaltyTag = penalty ? `<span class="tag penalty">${escHtml(penalty.name)}</span>` : '';
+      const doneTag = task.completed ? `<span class="tag done">完了</span>` : '';
+
+      const cardClass = task.completed ? 'card completed' : (isOverdue ? 'card overdue' : 'card');
+
+      let actions = '';
+      if (!task.completed) {
+        actions = `
+          <div class="card-actions">
+            <button class="btn btn-success btn-sm" onclick="completeTask('${task.taskId}')">完了</button>
+            ${isOverdue && penalty ? `<button class="btn btn-danger btn-sm" onclick="triggerPenalty('${task.taskId}')">ペナルティ発動</button>` : ''}
+            <button class="btn btn-outline btn-sm" onclick="deleteTask('${task.taskId}', '${escAttr(task.name)}')">削除</button>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="${cardClass}">
+          <div class="card-header">
+            <div>
+              <div class="card-title">${escHtml(task.name)}</div>
+              <div style="margin-top:4px">${deadlineTag} ${penaltyTag} ${doneTag}</div>
+            </div>
+          </div>
+          ${actions}
+        </div>
+      `;
+    }
+
+    function renderPenalties() {
+      if (appData.penalties.length === 0) {
+        document.getElementById('penaltyList').innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">&#9889;</div>
+            <p>ペナルティが登録されていません。追加しましょう！</p>
+          </div>
+        `;
+        return;
+      }
+
+      const html = appData.penalties.map(p => `
+        <div class="card" style="border-left-color:var(--danger)">
+          <div class="card-header">
+            <div>
+              <div class="card-title">${escHtml(p.name)}</div>
+              ${p.detail ? `<div class="card-meta">${escHtml(p.detail)}</div>` : ''}
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-outline btn-sm" onclick="showEditPenaltyModal('${p.penaltyId}')">編集</button>
+            <button class="btn btn-outline btn-sm" onclick="deletePenalty('${p.penaltyId}', '${escAttr(p.name)}')">削除</button>
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('penaltyList').innerHTML = html;
+    }
+
+    function renderHistory() {
+      if (appData.history.length === 0) {
+        document.getElementById('historyList').innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">&#128214;</div>
+            <p>ペナルティの発動履歴はありません</p>
+          </div>
+        `;
+        return;
+      }
+
+      // 新しい順
+      const sorted = [...appData.history].reverse();
+      const html = sorted.map(h => `
+        <div class="card" style="border-left-color:${h.done ? 'var(--success)' : 'var(--danger)'}">
+          <div class="card-header">
+            <div>
+              <div class="card-title">${escHtml(h.penaltyName)}</div>
+              <div class="card-meta">
+                タスク: ${escHtml(h.taskName)} | 発動: ${h.triggeredAt}
+              </div>
+            </div>
+            ${h.done
+              ? '<span class="tag done">実行済み</span>'
+              : `<button class="btn btn-success btn-sm" onclick="markHistoryDone('${h.historyId}')">実行済みにする</button>`
+            }
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('historyList').innerHTML = html;
+    }
+
+    function updatePenaltySelects() {
+      const select = document.getElementById('taskPenalty');
+      const current = select.value;
+      select.innerHTML = '<option value="">-- ペナルティなし --</option>';
+      appData.penalties.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.penaltyId;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      });
+      select.value = current;
+    }
+
+    // ============================================================
+    // タスク操作
+    // ============================================================
+    async function addTask() {
+      const name = document.getElementById('taskName').value.trim();
+      const deadline = document.getElementById('taskDeadline').value;
+      const penaltyId = document.getElementById('taskPenalty').value;
+
+      if (!name) { alert('タスク名を入力してください'); return; }
+      if (!deadline) { alert('締め切りを設定してください'); return; }
+
+      showLoading(true);
+      try {
+        const result = await apiCall('addTask', { name, deadline, penaltyId });
+        if (result.error) throw new Error(result.error);
+
+        appData.tasks.push({
+          taskId: result.taskId,
+          name, deadline, penaltyId,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          completedAt: ''
+        });
+
+        closeModal('addTaskModal');
+        document.getElementById('taskName').value = '';
+        renderAll();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function completeTask(taskId) {
+      if (!confirm('このタスクを完了にしますか？')) return;
+
+      showLoading(true);
+      try {
+        const result = await apiCall('completeTask', { taskId });
+        if (result.error) throw new Error(result.error);
+
+        const task = appData.tasks.find(t => t.taskId === taskId);
+        if (task) {
+          task.completed = true;
+          task.completedAt = new Date().toISOString();
+        }
+        renderAll();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function deleteTask(taskId, name) {
+      if (!confirm(`「${name}」を削除しますか？`)) return;
+
+      showLoading(true);
+      try {
+        const result = await apiCall('deleteTask', { taskId });
+        if (result.error) throw new Error(result.error);
+
+        appData.tasks = appData.tasks.filter(t => t.taskId !== taskId);
+        renderAll();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // ============================================================
+    // ペナルティ操作
+    // ============================================================
+    async function addPenalty() {
+      const name = document.getElementById('penaltyName').value.trim();
+      const detail = document.getElementById('penaltyDetail').value.trim();
+
+      if (!name) { alert('ペナルティ名を入力してください'); return; }
+
+      showLoading(true);
+      try {
+        const result = await apiCall('addPenalty', { name, detail });
+        if (result.error) throw new Error(result.error);
+
+        appData.penalties.push({
+          penaltyId: result.penaltyId,
+          name, detail
+        });
+
+        closeModal('addPenaltyModal');
+        document.getElementById('penaltyName').value = '';
+        document.getElementById('penaltyDetail').value = '';
+        renderAll();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function showEditPenaltyModal(penaltyId) {
+      const p = appData.penalties.find(x => x.penaltyId === penaltyId);
+      if (!p) return;
+
+      document.getElementById('editPenaltyId').value = p.penaltyId;
+      document.getElementById('editPenaltyName').value = p.name;
+      document.getElementById('editPenaltyDetail').value = p.detail || '';
+      document.getElementById('editPenaltyModal').classList.add('show');
+    }
+
+    async function updatePenalty() {
+      const penaltyId = document.getElementById('editPenaltyId').value;
+      const name = document.getElementById('editPenaltyName').value.trim();
+      const detail = document.getElementById('editPenaltyDetail').value.trim();
+
+      if (!name) { alert('ペナルティ名を入力してください'); return; }
+
+      showLoading(true);
+      try {
+        const result = await apiCall('updatePenalty', { penaltyId, name, detail });
+        if (result.error) throw new Error(result.error);
+
+        const p = appData.penalties.find(x => x.penaltyId === penaltyId);
+        if (p) { p.name = name; p.detail = detail; }
+
+        closeModal('editPenaltyModal');
+        renderAll();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function deletePenalty(penaltyId, name) {
+      if (!confirm(`「${name}」を削除しますか？`)) return;
+
+      showLoading(true);
+      try {
+        const result = await apiCall('deletePenalty', { penaltyId });
+        if (result.error) throw new Error(result.error);
+
+        appData.penalties = appData.penalties.filter(p => p.penaltyId !== penaltyId);
+        renderAll();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // ============================================================
+    // ペナルティ履歴操作
+    // ============================================================
+    async function triggerPenalty(taskId) {
+      const task = appData.tasks.find(t => t.taskId === taskId);
+      const penalty = appData.penalties.find(p => p.penaltyId === task?.penaltyId);
+      if (!task || !penalty) return;
+
+      if (!confirm(`「${task.name}」のペナルティ「${penalty.name}」を発動しますか？`)) return;
+
+      showLoading(true);
+      try {
+        const result = await apiCall('triggerPenalty', { taskId });
+        if (result.error) throw new Error(result.error);
+
+        appData.history.push({
+          historyId: result.historyId,
+          taskId: task.taskId,
+          taskName: task.name,
+          penaltyId: penalty.penaltyId,
+          penaltyName: penalty.name,
+          triggeredAt: new Date().toISOString(),
+          done: false
+        });
+
+        renderAll();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function markHistoryDone(historyId) {
+      showLoading(true);
+      try {
+        const result = await apiCall('markHistoryDone', { historyId });
+        if (result.error) throw new Error(result.error);
+
+        const h = appData.history.find(x => x.historyId === historyId);
+        if (h) h.done = true;
+
+        renderAll();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // ============================================================
+    // モーダル
+    // ============================================================
+    function showAddTaskModal() {
+      updatePenaltySelects();
+      document.getElementById('addTaskModal').classList.add('show');
+      document.getElementById('taskName').focus();
+    }
+
+    function showAddPenaltyModal() {
+      document.getElementById('addPenaltyModal').classList.add('show');
+      document.getElementById('penaltyName').focus();
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    // モーダル外クリックで閉じる
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) {
+        e.target.classList.remove('show');
+      }
+    });
+
+    // ============================================================
+    // ユーティリティ
+    // ============================================================
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function escHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function escAttr(str) {
+      return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function showLoading(show) {
+      document.getElementById('loadingOverlay').style.display = show ? 'block' : 'none';
+    }
+  </script>
+</body>
+</html>

@@ -452,11 +452,148 @@
       border-color: var(--danger);
     }
 
+    /* カレンダー */
+    .calendar-wrapper {
+      background: var(--card);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .calendar-header h3 {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .calendar-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .calendar-nav button {
+      background: none;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-light);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .calendar-nav button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .calendar-dow {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-light);
+      padding: 4px 0;
+    }
+
+    .calendar-dow.sun { color: var(--danger); }
+    .calendar-dow.sat { color: #0984e3; }
+
+    .calendar-cell {
+      min-height: 64px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px;
+      position: relative;
+      background: var(--card);
+      cursor: default;
+    }
+
+    .calendar-cell.other-month {
+      background: #f5f6fa;
+      opacity: 0.5;
+    }
+
+    .calendar-cell.today {
+      border-color: var(--primary);
+      border-width: 2px;
+    }
+
+    .calendar-day-num {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 4px;
+      color: var(--text);
+    }
+
+    .calendar-cell.sun .calendar-day-num { color: var(--danger); }
+    .calendar-cell.sat .calendar-day-num { color: #0984e3; }
+
+    .calendar-task {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 4px;
+      margin: 1px 0;
+      border-radius: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.4;
+    }
+
+    .calendar-task.task-normal {
+      background: #e8e5ff;
+      color: var(--primary);
+    }
+
+    .calendar-task.task-overdue {
+      background: var(--danger);
+      color: white;
+    }
+
+    .calendar-task.task-done {
+      background: var(--success-light);
+      color: #0a6b52;
+      text-decoration: line-through;
+    }
+
+    .calendar-task.task-soon {
+      background: #ffeaa7;
+      color: #846b10;
+    }
+
+    .calendar-more {
+      font-size: 9px;
+      color: var(--text-light);
+      padding: 0 4px;
+    }
+
     /* レスポンシブ */
     @media (max-width: 480px) {
       .header h1 { font-size: 17px; }
       .form-inline { flex-direction: column; }
       .stats { grid-template-columns: repeat(2, 1fr); }
+      .calendar-cell { min-height: 48px; }
+      .calendar-task { font-size: 9px; }
+      .calendar-day-num { font-size: 10px; }
     }
   </style>
 </head>
@@ -504,6 +641,19 @@
 
     <!-- ダッシュボード -->
     <div class="section active" id="sec-dashboard">
+      <!-- カレンダー -->
+      <div class="calendar-wrapper">
+        <div class="calendar-header">
+          <h3 id="calendarTitle">2026年3月</h3>
+          <div class="calendar-nav">
+            <button onclick="changeMonth(-1)">&lt;</button>
+            <button onclick="goToday()" style="width:auto;padding:0 10px;font-size:12px">今日</button>
+            <button onclick="changeMonth(1)">&gt;</button>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+
       <div class="stats">
         <div class="stat-card primary">
           <div class="number" id="statTotal">0</div>
@@ -729,6 +879,7 @@
     // レンダリング
     // ============================================================
     function renderAll() {
+      renderCalendar();
       renderDashboard();
       renderTasks();
       renderPenalties();
@@ -756,7 +907,7 @@
         const penaltyText = penalty ? `<span class="tag penalty">${escHtml(penalty.name)}</span>` : '';
         return `
           <div class="alert alert-danger">
-            <strong>${escHtml(t.name)}</strong> の期限が切れています（${t.deadline}）
+            <strong>${escHtml(t.name)}</strong> の期限が切れています（${formatDateWithDow(t.deadline)}）
             ${penaltyText}
             <div style="margin-top:8px">
               <button class="btn btn-success btn-sm" onclick="completeTask('${t.taskId}')">完了にする</button>
@@ -836,14 +987,15 @@
       const daysLeft = task.deadline ? Math.ceil((new Date(task.deadline) - new Date(today)) / 86400000) : null;
       let deadlineTag = '';
       if (task.deadline) {
+        const dow = getDow(task.deadline);
         if (isOverdue) {
-          deadlineTag = `<span class="tag overdue">期限切れ（${Math.abs(daysLeft)}日超過）</span>`;
+          deadlineTag = `<span class="tag overdue">期限切れ（${Math.abs(daysLeft)}日超過）${formatDateWithDow(task.deadline)}</span>`;
         } else if (daysLeft === 0) {
-          deadlineTag = `<span class="tag overdue">今日まで！</span>`;
+          deadlineTag = `<span class="tag overdue">今日（${dow}）まで！</span>`;
         } else if (daysLeft <= 3) {
-          deadlineTag = `<span class="tag deadline">あと${daysLeft}日</span>`;
+          deadlineTag = `<span class="tag deadline">あと${daysLeft}日（${dow}）</span>`;
         } else {
-          deadlineTag = `<span class="tag deadline">${task.deadline}</span>`;
+          deadlineTag = `<span class="tag deadline">${formatDateWithDow(task.deadline)}</span>`;
         }
       }
 
@@ -1182,11 +1334,22 @@
     // ============================================================
     // ユーティリティ
     // ============================================================
+    const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
     function formatDate(date) {
       const y = date.getFullYear();
       const m = String(date.getMonth() + 1).padStart(2, '0');
       const d = String(date.getDate()).padStart(2, '0');
       return `${y}-${m}-${d}`;
+    }
+
+    function getDow(dateStr) {
+      const d = new Date(dateStr);
+      return DOW_LABELS[d.getDay()];
+    }
+
+    function formatDateWithDow(dateStr) {
+      return `${dateStr}（${getDow(dateStr)}）`;
     }
 
     function escHtml(str) {
@@ -1201,6 +1364,108 @@
 
     function showLoading(show) {
       document.getElementById('loadingOverlay').style.display = show ? 'block' : 'none';
+    }
+
+    // ============================================================
+    // カレンダー
+    // ============================================================
+    let calendarYear = new Date().getFullYear();
+    let calendarMonth = new Date().getMonth();
+
+    function changeMonth(delta) {
+      calendarMonth += delta;
+      if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+      if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+      renderCalendar();
+    }
+
+    function goToday() {
+      const now = new Date();
+      calendarYear = now.getFullYear();
+      calendarMonth = now.getMonth();
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const title = document.getElementById('calendarTitle');
+      title.textContent = `${calendarYear}年${calendarMonth + 1}月`;
+
+      const grid = document.getElementById('calendarGrid');
+      const today = formatDate(new Date());
+
+      // 曜日ヘッダー
+      let html = DOW_LABELS.map((d, i) => {
+        const cls = i === 0 ? 'calendar-dow sun' : i === 6 ? 'calendar-dow sat' : 'calendar-dow';
+        return `<div class="${cls}">${d}</div>`;
+      }).join('');
+
+      // 月の最初の日と最後の日
+      const firstDay = new Date(calendarYear, calendarMonth, 1);
+      const lastDay = new Date(calendarYear, calendarMonth + 1, 0);
+      const startDow = firstDay.getDay();
+      const daysInMonth = lastDay.getDate();
+
+      // 前月の埋め草
+      const prevLastDay = new Date(calendarYear, calendarMonth, 0).getDate();
+      for (let i = startDow - 1; i >= 0; i--) {
+        const day = prevLastDay - i;
+        const dateStr = formatDate(new Date(calendarYear, calendarMonth - 1, day));
+        const dow = (startDow - 1 - i) % 7;
+        html += buildCalendarCell(dateStr, day, true, dow, today);
+      }
+
+      // 当月
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = formatDate(new Date(calendarYear, calendarMonth, d));
+        const dow = (startDow + d - 1) % 7;
+        html += buildCalendarCell(dateStr, d, false, dow, today);
+      }
+
+      // 翌月の埋め草（6行分まで）
+      const totalCells = startDow + daysInMonth;
+      const remaining = (7 - (totalCells % 7)) % 7;
+      for (let d = 1; d <= remaining; d++) {
+        const dateStr = formatDate(new Date(calendarYear, calendarMonth + 1, d));
+        const dow = (totalCells + d - 1) % 7;
+        html += buildCalendarCell(dateStr, d, true, dow, today);
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function buildCalendarCell(dateStr, dayNum, isOtherMonth, dow, today) {
+      const classes = ['calendar-cell'];
+      if (isOtherMonth) classes.push('other-month');
+      if (dateStr === today) classes.push('today');
+      if (dow === 0) classes.push('sun');
+      if (dow === 6) classes.push('sat');
+
+      // この日のタスクを取得
+      const dayTasks = appData.tasks.filter(t => t.deadline === dateStr);
+      const maxShow = 3;
+      let tasksHtml = '';
+      dayTasks.slice(0, maxShow).forEach(t => {
+        let cls = 'calendar-task ';
+        if (t.completed) {
+          cls += 'task-done';
+        } else if (dateStr < today) {
+          cls += 'task-overdue';
+        } else if (dateStr === today) {
+          cls += 'task-soon';
+        } else {
+          const daysLeft = Math.ceil((new Date(dateStr) - new Date(today)) / 86400000);
+          cls += daysLeft <= 3 ? 'task-soon' : 'task-normal';
+        }
+        tasksHtml += `<div class="${cls}" title="${escHtml(t.name)}">${escHtml(t.name)}</div>`;
+      });
+      if (dayTasks.length > maxShow) {
+        tasksHtml += `<div class="calendar-more">+${dayTasks.length - maxShow}件</div>`;
+      }
+
+      return `<div class="${classes.join(' ')}">
+        <div class="calendar-day-num">${dayNum}</div>
+        ${tasksHtml}
+      </div>`;
     }
   </script>
 </body>

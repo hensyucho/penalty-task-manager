@@ -748,6 +748,24 @@
     </div>
   </div>
 
+  <!-- タスクペナルティ変更モーダル -->
+  <div class="modal-overlay" id="changeTaskPenaltyModal">
+    <div class="modal">
+      <h3>ペナルティを設定</h3>
+      <input type="hidden" id="changeTaskPenaltyTaskId">
+      <div class="form-group">
+        <label>ペナルティ（未達成時に発動）</label>
+        <select id="changeTaskPenaltySelect">
+          <option value="">-- ペナルティなし --</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal('changeTaskPenaltyModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveTaskPenalty()">保存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ペナルティ編集モーダル -->
   <div class="modal-overlay" id="editPenaltyModal">
     <div class="modal">
@@ -1006,10 +1024,12 @@
 
       let actions = '';
       if (!task.completed) {
+        const penaltyBtnLabel = penalty ? 'ペナルティ変更' : 'ペナルティ設定';
         actions = `
           <div class="card-actions">
             <button class="btn btn-success btn-sm" onclick="completeTask('${task.taskId}')">完了</button>
             ${isOverdue && penalty ? `<button class="btn btn-danger btn-sm" onclick="triggerPenalty('${task.taskId}')">ペナルティ発動</button>` : ''}
+            <button class="btn btn-outline btn-sm" onclick="showChangeTaskPenaltyModal('${task.taskId}')">${penaltyBtnLabel}</button>
             <button class="btn btn-outline btn-sm" onclick="deleteTask('${task.taskId}', '${escAttr(task.name)}')">削除</button>
           </div>
         `;
@@ -1167,6 +1187,47 @@
         if (result.error) throw new Error(result.error);
 
         appData.tasks = appData.tasks.filter(t => t.taskId !== taskId);
+        renderAll();
+      } catch (e) {
+        alert('エラー: ' + e.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // ============================================================
+    // タスクのペナルティ変更
+    // ============================================================
+    function showChangeTaskPenaltyModal(taskId) {
+      const task = appData.tasks.find(t => t.taskId === taskId);
+      if (!task) return;
+
+      document.getElementById('changeTaskPenaltyTaskId').value = taskId;
+      const select = document.getElementById('changeTaskPenaltySelect');
+      select.innerHTML = '<option value="">-- ペナルティなし --</option>';
+      appData.penalties.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.penaltyId;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      });
+      select.value = task.penaltyId || '';
+      document.getElementById('changeTaskPenaltyModal').classList.add('show');
+    }
+
+    async function saveTaskPenalty() {
+      const taskId = document.getElementById('changeTaskPenaltyTaskId').value;
+      const penaltyId = document.getElementById('changeTaskPenaltySelect').value;
+
+      showLoading(true);
+      try {
+        const result = await apiCall('updateTaskPenalty', { taskId, penaltyId });
+        if (result.error) throw new Error(result.error);
+
+        const task = appData.tasks.find(t => t.taskId === taskId);
+        if (task) task.penaltyId = penaltyId;
+
+        closeModal('changeTaskPenaltyModal');
         renderAll();
       } catch (e) {
         alert('エラー: ' + e.message);

@@ -52,6 +52,7 @@
 | `addTask` | GET | name, deadline, penaltyId | タスク追加 |
 | `completeTask` | GET | taskId | タスクを完了にする |
 | `deleteTask` | GET | taskId | タスクを削除 |
+| `updateTaskPenalty` | GET | taskId, penaltyId | タスクのペナルティを変更（空文字で解除） |
 | `getPenalties` | GET | なし | ペナルティ一覧取得 |
 | `addPenalty` | GET | name, detail | ペナルティ追加 |
 | `updatePenalty` | GET | penaltyId, name, detail | ペナルティ編集 |
@@ -85,7 +86,8 @@
 
 - 未完了タスクを期限順に表示（期限切れ → 期限近い → 期限なし）
 - 完了済みタスクは下部に折りたたみ表示
-- 各タスクに: 完了ボタン、削除ボタン、期限超過時はペナルティ発動ボタン
+- 各タスクに: 完了ボタン、ペナルティ設定/変更ボタン、削除ボタン、期限超過時はペナルティ発動ボタン
+- ペナルティ未設定タスクには「ペナルティ設定」、設定済みには「ペナルティ変更」ボタンを表示
 - 「+ 追加」ボタンでモーダル表示（タスク名・締め切り・ペナルティ選択）
 
 ### 4. ペナルティ一覧

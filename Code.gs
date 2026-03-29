@@ -94,6 +94,9 @@ function handleRequest(e) {
       case 'deleteTask':
         result = deleteTask(params.taskId);
         break;
+      case 'updateTaskPenalty':
+        result = updateTaskPenalty(params.taskId, params.penaltyId);
+        break;
 
       // ペナルティ
       case 'getPenalties':
@@ -226,6 +229,19 @@ function deleteTask(taskId) {
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]) === String(taskId)) {
       sheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  return { error: 'タスクが見つかりません' };
+}
+
+function updateTaskPenalty(taskId, penaltyId) {
+  const sheet = getSheet('タスク');
+  const data = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(taskId)) {
+      sheet.getRange(i + 1, 4).setValue(penaltyId || '');
       return { success: true };
     }
   }
